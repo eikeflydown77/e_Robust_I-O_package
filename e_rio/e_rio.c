@@ -54,22 +54,34 @@ ssize_t rio_writen(int fd, void *usrbuf, size_t n) {
  * @param rp
  * @param fd
  */
-void rio_readinitb(rio_t *rp, int fd) {
+void rio_readinitb(int fd, rio_t *rp) {
     rp->rio_fd = fd;
     rp->rio_cnt = 0;
     rp->rio_bufptr = rp->rio_buf;
 }
 
-/**
- *
- * @param rp
- * @param usrbuf
- * @param n
- * @return
- */
-static ssize_t rio_read(rio_t *rp, char *usrbuf, size_t n) {
-    int cnt;
+int rio_seekbuffd(const rio_t *rp) {
+    return rp->rio_fd;
+}
 
+/**
+ * @param rp
+ * @return  返回缓冲区当前剩余数据量
+ */
+int rio_seekbufcnt(const rio_t *rp) {
+    return rp->rio_cnt;
+}
+
+/**
+ * @param rp
+ * @return  返回缓冲区当前位置指针
+ */
+char *rio_getbufptr(rio_t *rp) {
+    return rp->rio_bufptr;
+}
+
+ssize_t rio_read(rio_t *rp, char *usrbuf, size_t n) {
+    int cnt;
     /*当缓冲区为空时从文件中读去数据填满缓冲区*/
     while (rp->rio_cnt <= 0) {
         rp->rio_cnt = read(rp->rio_fd, rp->rio_buf, sizeof(rp->rio_buf));
@@ -93,15 +105,13 @@ static ssize_t rio_read(rio_t *rp, char *usrbuf, size_t n) {
 }
 
 
-ssize_t	e_rio_readnb(int fd, void *usrbuf, size_t n) {
-    rio_t rp;
-    rio_readinitb(&rp, fd);
+ssize_t	rio_readnb(rio_t *rp, void *usrbuf, size_t n) {
     size_t nleft = n;
     ssize_t nread;
     char *bufp = usrbuf;
 
     while (nleft > 0) {
-        if ((nread = rio_read(&rp, bufp, nleft)) < 0) return -1; /*只可能会出错，中断处理在rio_read中已经被处理*/
+        if ((nread = rio_read(rp, bufp, nleft)) < 0) return -1; /*只可能会出错，中断处理在rio_read中已经被处理*/
         else if (nread == 0) break; /*EOF*/
         nleft -= nread;
         bufp += nread;
@@ -114,16 +124,14 @@ ssize_t	e_rio_readnb(int fd, void *usrbuf, size_t n) {
  * @param rp
  * @param usrbuf
  * @param maxlen    行长度
- * @return
+ * @return          返回
  */
-ssize_t	e_rio_readlineb(int fd, void *usrbuf, size_t maxlen) {
-    rio_t rp;
-    rio_readinitb(&rp, fd);
+ssize_t	rio_readlineb(rio_t *rp, void *usrbuf, size_t maxlen) {
     int n, rc;
     char c, *bufp = usrbuf;
 
     for (n = 1; n < maxlen; n++) {  /*最多读取maxlen - 1个字符*/
-        if ((rc = rio_read(&rp, &c, 1)) == 1) {  /*rio_read中预加载了缓冲区最大容量的数据，实际上每次读取都是从缓冲区中读取*/
+        if ((rc = rio_read(rp, &c, 1)) == 1) {  /*rio_read中预加载了缓冲区最大容量的数据，实际上每次读取都是从缓冲区中读取*/
             *bufp ++ = c;
             if (c == '\n') {        /*遭遇换行符*/
                 n++;
@@ -136,4 +144,22 @@ ssize_t	e_rio_readlineb(int fd, void *usrbuf, size_t maxlen) {
     }
     *bufp = NULL;                   /*截断超出行长度的字符*/
     return n - 1;
+}
+
+ssize_t	rio_vreadnb(int fd, void *usrbuf, size_t n) {
+    int cnt = e_rio_seekbufcnt();
+    int oldfd = e_rio_seekbuffd();
+    if (cnt < 0 || oldfd != fd) {
+        e_rio_readinit(fd);
+    }
+    return rio_readnb(&r_buffer, usrbuf, n);
+}
+
+ssize_t	rio_vreadlineb(int fd, void *usrbuf, size_t n) {
+    int cnt = e_rio_seekbufcnt();
+    int oldfd = e_rio_seekbuffd();
+    if (cnt < 0 || oldfd != fd) {
+        e_rio_readinit(fd);
+    }
+    return rio_readlineb(&r_buffer, usrbuf, n);
 }
