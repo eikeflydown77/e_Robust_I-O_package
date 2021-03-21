@@ -8,7 +8,7 @@ e_Robust_I/O_package(后简称eRio)是基于Unix提供的I/O接口包装和改�
 
 
 ### 您什么时候可以使用它
-1. eRio仅仅包装了Unix包装中的`read`和`write`功能，所以当您需要从文件中读写的时候都可以使用eRio，当然，我指的是广义上的文件，也就是您打开任何I/O设备（包括硬盘，键鼠与网络适配器等）的映射，您可以在Unix中查看它的文件描述符（File Descriter）。为了保证eRio良好的复用性，eRio使用的文件参数均是文件描述符（File Descriter）。
+1. eRio仅仅包装了Unix包装中的`read`和`write`功能，所以当您需要从文件中读写的时候都可以使用eRio，当然，我指的是广义上的文件，也就是您打开任何I/O设备（包括硬盘，键鼠与网络适配器等）的映射，您可以在Unix中查看它的文件描述符（File Descriptor）。为了保证eRio良好的复用性，eRio使用的文件参数均是文件描述符（File Descriptor）。
 &nbsp;            
 2. 它与Unix I/O、C语言提供的标准I/O函数的区别：
 - 它比Unix I/O更加健壮，eRio提供的函数接口解决了Unix I/O返回不足值的问题，并且提供了一系列提供缓冲区的输入方法，减少了内存与I/O设备传输数据的次数，而每次传输都是要陷入内核的。
